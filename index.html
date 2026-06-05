@@ -51,13 +51,8 @@ textarea { min-height:80px; }
 .result-sec h3 { font-size:12px; font-weight:500; letter-spacing:.08em; color:#888780; margin-bottom:8px; }
 .result-sec p { font-size:14px; color:#2c2c2a; line-height:1.8; }
 .hidden { display:none; }
-
-/* 画像バナー */
 .sec-image { width:100%; height:160px; object-fit:cover; border-radius:12px; margin-bottom:1.25rem; display:block; }
-
-/* BGMボタン */
 .bgm-btn { position:fixed; bottom:20px; right:20px; background:#fff; border:.5px solid #d3d1c7; border-radius:50px; padding:8px 16px; font-size:13px; cursor:pointer; box-shadow:0 2px 12px rgba(0,0,0,0.08); z-index:100; display:flex; align-items:center; gap:6px; color:#2c2c2a; transition:all .15s; }
-.bgm-btn:hover { border-color:#5DCAA5; }
 .bgm-dot { width:8px; height:8px; border-radius:50%; background:#d3d1c7; transition:background .3s; }
 .bgm-dot.playing { background:#1D9E75; animation:pulse 1.5s infinite; }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
@@ -65,7 +60,6 @@ textarea { min-height:80px; }
 </head>
 <body>
 
-<!-- BGMボタン -->
 <button class="bgm-btn" id="bgm-btn" onclick="toggleBGM()">
   <span class="bgm-dot" id="bgm-dot"></span>
   <span id="bgm-label">BGM ON</span>
@@ -141,96 +135,74 @@ textarea { min-height:80px; }
 </div>
 
 <script>
-// ===== BGM (Web Audio API) =====
-let audioCtx = null;
+// BGM
 let bgmOn = false;
+let audioCtx = null;
 let bgmNodes = [];
 
 function startBGM() {
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   audioCtx.resume().then(() => {
-
-  const chords = [
-    [261.63, 329.63, 392.00, 493.88],
-    [220.00, 261.63, 329.63, 440.00],
-    [174.61, 220.00, 261.63, 329.63],
-    [196.00, 246.94, 293.66, 349.23],
-  ];
-
-  function playPianoNote(freq, time, dur, vol=0.06) {
-    const osc1 = audioCtx.createOscillator();
-    const osc2 = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    const filter = audioCtx.createBiquadFilter();
-    osc1.type = 'triangle';
-    osc1.frequency.setValueAtTime(freq, time);
-    osc2.type = 'sine';
-    osc2.frequency.setValueAtTime(freq * 2, time);
-    filter.type = 'lowpass';
-    filter.frequency.value = 1200;
-    osc1.connect(filter);
-    osc2.connect(filter);
-    filter.connect(gain);
-    gain.connect(audioCtx.destination);
-    gain.gain.setValueAtTime(0, time);
-    gain.gain.linearRampToValueAtTime(vol, time + 0.02);
-    gain.gain.exponentialRampToValueAtTime(vol * 0.4, time + 0.3);
-    gain.gain.exponentialRampToValueAtTime(0.001, time + dur);
-    osc1.start(time); osc1.stop(time + dur);
-    osc2.start(time); osc2.stop(time + dur);
-    bgmNodes.push(osc1, osc2);
-  }
-
-  function loop() {
-    if (!bgmOn) return;
-    const t = audioCtx.currentTime;
-    chords.forEach((chord, i) => {
-      const base = t + i * 3.2;
-      chord.forEach((freq, j) => {
-        playPianoNote(freq, base + j * 0.06, 2.8);
+    const chords = [
+      [261.63, 329.63, 392.00, 493.88],
+      [220.00, 261.63, 329.63, 440.00],
+      [174.61, 220.00, 261.63, 329.63],
+      [196.00, 246.94, 293.66, 349.23],
+    ];
+    function playPianoNote(freq, time, dur, vol=0.06) {
+      const o1=audioCtx.createOscillator(), o2=audioCtx.createOscillator();
+      const gain=audioCtx.createGain(), filter=audioCtx.createBiquadFilter();
+      o1.type='triangle'; o1.frequency.setValueAtTime(freq,time);
+      o2.type='sine'; o2.frequency.setValueAtTime(freq*2,time);
+      filter.type='lowpass'; filter.frequency.value=1200;
+      o1.connect(filter); o2.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
+      gain.gain.setValueAtTime(0,time);
+      gain.gain.linearRampToValueAtTime(vol,time+0.02);
+      gain.gain.exponentialRampToValueAtTime(vol*0.4,time+0.3);
+      gain.gain.exponentialRampToValueAtTime(0.001,time+dur);
+      o1.start(time); o1.stop(time+dur);
+      o2.start(time); o2.stop(time+dur);
+      bgmNodes.push(o1,o2);
+    }
+    function loop() {
+      if (!bgmOn) return;
+      const t=audioCtx.currentTime;
+      chords.forEach((chord,i) => {
+        const base=t+i*3.2;
+        chord.forEach((freq,j) => playPianoNote(freq,base+j*0.06,2.8));
+        playPianoNote(chord[0]*0.5,base,3.0,0.05);
       });
-      playPianoNote(chord[0] * 0.5, base, 3.0, 0.05);
-    });
-    setTimeout(loop, chords.length * 3200);
-  }
-  loop();
-
-  }); // resume end
+      setTimeout(loop,chords.length*3200);
+    }
+    loop();
+  });
 }
 
 function toggleBGM() {
-  const dot = document.getElementById('bgm-dot');
-  const label = document.getElementById('bgm-label');
+  const dot=document.getElementById('bgm-dot'), label=document.getElementById('bgm-label');
   if (!bgmOn) {
-    // 毎回新しいAudioContextを作る（モバイル対応）
-    if (audioCtx) { audioCtx.close(); audioCtx = null; }
-    bgmNodes = [];
-    bgmOn = true;
-    dot.classList.add('playing');
-    label.textContent = 'BGM OFF';
+    if (audioCtx) { audioCtx.close(); audioCtx=null; }
+    bgmNodes=[]; bgmOn=true;
+    dot.classList.add('playing'); label.textContent='BGM OFF';
     startBGM();
   } else {
-    bgmOn = false;
-    dot.classList.remove('playing');
-    label.textContent = 'BGM ON';
-    if (audioCtx) { audioCtx.close(); audioCtx = null; }
-    bgmNodes = [];
+    bgmOn=false; dot.classList.remove('playing'); label.textContent='BGM ON';
+    if (audioCtx) { audioCtx.close(); audioCtx=null; }
+    bgmNodes=[];
   }
 }
 
-// ===== セクション画像 =====
 const SEC_IMAGES = [
-  'https://images.unsplash.com/photo-1585771724684-38269d6639fd?w=800&q=80', // 和室・静か
-  'https://images.unsplash.com/photo-1518780664697-55e3ad937233?w=800&q=80', // 家・暮らし
-  'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&q=80', // キッチン
-  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&q=80', // 窓・光
-  'https://images.unsplash.com/photo-1571781926291-c477ebfd024b?w=800&q=80', // バスルーム
-  'https://images.unsplash.com/photo-1560185127-6ed189bf02f4?w=800&q=80', // 家族
-  'https://images.unsplash.com/photo-1484101403633-562f891dc89a?w=800&q=80', // インテリア
-  'https://images.unsplash.com/photo-1501854140801-50d01698950b?w=800&q=80', // 自然・森
+  'https://images.unsplash.com/photo-1585771724684-38269d6639fd?w=800&q=80',
+  'https://images.unsplash.com/photo-1518780664697-55e3ad937233?w=800&q=80',
+  'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&q=80',
+  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&q=80',
+  'https://images.unsplash.com/photo-1571781926291-c477ebfd024b?w=800&q=80',
+  'https://images.unsplash.com/photo-1560185127-6ed189bf02f4?w=800&q=80',
+  'https://images.unsplash.com/photo-1484101403633-562f891dc89a?w=800&q=80',
+  'https://images.unsplash.com/photo-1501854140801-50d01698950b?w=800&q=80',
 ];
 
-// ===== データ =====
 const SECS = [
   { title:"セクション1：今の暮らしについて", qs:[
     { id:"q0", label:"これからの暮らしで「こうなったらいいな」と感じていることを教えてください", type:"textarea", note:"小さなことでも大丈夫です" },
@@ -281,14 +253,18 @@ const SECS = [
       opts:["ぜひ相談したい","内容によって考えたい","今はまだわからない"] },
     { id:"q25", label:"費用面で気になっていることがあれば教えてください", type:"textarea" }
   ]},
-  { title:"セクション8：自由記入", qs:[
+  { title:"セクション8：自由記入・ご連絡先", qs:[
     { id:"q26", label:"日常で大切にしている時間や習慣があれば教えてください", type:"textarea",
       note:"例：深呼吸、入浴、ヨガ、サウナ、自然に触れる時間 など" },
     { id:"q27", label:"家族のために頑張ってこられた中で「本当はこうしたかったな」と感じていることがあれば教えてください", type:"textarea" },
     { id:"q28", label:"住まいが整ったら、日常のどんな瞬間に「しあわせだな」と感じられそうですか？", type:"textarea",
       note:"気持ちや感覚（安心・ほっとする・満たされる など）で教えてください" },
     { id:"q29", label:"その他、事前に伝えておきたいことがあればご記入ください", type:"textarea" },
-    { id:"q30", label:"現地確認や面談の際に、特に見てほしい場所があれば教えてください", type:"textarea" }
+    { id:"q30", label:"現地確認や面談の際に、特に見てほしい場所があれば教えてください", type:"textarea" },
+    { id:"q1", label:"お名前", type:"text", note:"診断結果をお送りする際に使用します", req:true },
+    { id:"q3", label:"お電話番号", type:"text", req:true },
+    { id:"q4", label:"メールアドレス", type:"text" },
+    { id:"q2", label:"ご住所", type:"text", note:"現地確認をご希望の場合にご記入ください" }
   ]}
 ];
 
@@ -297,9 +273,9 @@ const ans = {};
 let cur = 0;
 
 document.getElementById('btn-api').addEventListener('click', () => {
-  const k = document.getElementById('api-input').value.trim();
+  const k=document.getElementById('api-input').value.trim();
   if (!k) { document.getElementById('e-api').style.display='block'; return; }
-  API_KEY = k;
+  API_KEY=k;
   document.getElementById('s-api').classList.add('hidden');
   document.getElementById('s-intro').classList.remove('hidden');
 });
@@ -314,43 +290,42 @@ document.getElementById('btn-next').addEventListener('click', goNext);
 document.getElementById('btn-back').addEventListener('click', goBack);
 
 function render() {
-  const sec = SECS[cur];
-  document.getElementById('prog').style.width = Math.round((cur/SECS.length)*100)+'%';
-  document.getElementById('prog-label').textContent = `セクション ${cur+1} / ${SECS.length}`;
-  document.getElementById('btn-back').classList.toggle('hidden', cur===0);
-  document.getElementById('btn-next').textContent = cur===SECS.length-1 ? '診断する' : '次へ';
+  const sec=SECS[cur];
+  document.getElementById('prog').style.width=Math.round((cur/SECS.length)*100)+'%';
+  document.getElementById('prog-label').textContent=`セクション ${cur+1} / ${SECS.length}`;
+  document.getElementById('btn-back').classList.toggle('hidden',cur===0);
+  document.getElementById('btn-next').textContent=cur===SECS.length-1?'診断する':'次へ';
 
-  const img = SEC_IMAGES[cur] || SEC_IMAGES[0];
-  let h = `<img src="${img}" alt="イメージ" class="sec-image">`;
-  h += `<div class="card"><div class="sec-title">${sec.title}</div>`;
-
+  const img=SEC_IMAGES[cur]||SEC_IMAGES[0];
+  let h=`<img src="${img}" alt="イメージ" class="sec-image">`;
+  h+=`<div class="card"><div class="sec-title">${sec.title}</div>`;
   sec.qs.forEach(q => {
-    const v = ans[q.id];
-    h += `<div class="q-block">`;
-    h += `<div class="q-label">${q.label}${q.req?'<span class="req">*必須</span>':''}</div>`;
-    if (q.note) h += `<div class="q-note">${q.note}</div>`;
+    const v=ans[q.id];
+    h+=`<div class="q-block">`;
+    h+=`<div class="q-label">${q.label}${q.req?'<span class="req">*必須</span>':''}</div>`;
+    if (q.note) h+=`<div class="q-note">${q.note}</div>`;
     if (q.type==='text') {
-      h += `<input type="text" id="${q.id}" value="${v||''}" placeholder="ご記入ください">`;
+      h+=`<input type="text" id="${q.id}" value="${v||''}" placeholder="ご記入ください">`;
     } else if (q.type==='textarea') {
-      h += `<textarea id="${q.id}" placeholder="ご記入ください">${v||''}</textarea>`;
+      h+=`<textarea id="${q.id}" placeholder="ご記入ください">${v||''}</textarea>`;
     } else if (q.type==='cb') {
       const sel=v||[];
-      h += `<div class="cb-grid">`;
-      q.opts.forEach(o => h += `<button type="button" class="cb-btn${sel.includes(o)?' on':''}" data-qid="${q.id}" data-val="${o}">${o}</button>`);
-      h += `</div>`;
+      h+=`<div class="cb-grid">`;
+      q.opts.forEach(o => h+=`<button type="button" class="cb-btn${sel.includes(o)?' on':''}" data-qid="${q.id}" data-val="${o}">${o}</button>`);
+      h+=`</div>`;
     } else if (q.type==='rb') {
-      h += `<div class="rb-row">`;
-      q.opts.forEach(o => h += `<button type="button" class="rb-btn${v===o?' on':''}" data-qid="${q.id}" data-val="${o}">${o}</button>`);
-      h += `</div>`;
+      h+=`<div class="rb-row">`;
+      q.opts.forEach(o => h+=`<button type="button" class="rb-btn${v===o?' on':''}" data-qid="${q.id}" data-val="${o}">${o}</button>`);
+      h+=`</div>`;
     }
-    h += `<div class="err" id="e-${q.id}">この項目は必須です</div></div>`;
+    h+=`<div class="err" id="e-${q.id}">この項目は必須です</div></div>`;
   });
-  h += `</div>`;
-  document.getElementById('form-body').innerHTML = h;
+  h+=`</div>`;
+  document.getElementById('form-body').innerHTML=h;
 
   document.querySelectorAll('.cb-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      const {qid,val} = btn.dataset;
+      const {qid,val}=btn.dataset;
       if (!ans[qid]) ans[qid]=[];
       if (btn.classList.contains('on')) { ans[qid]=ans[qid].filter(x=>x!==val); btn.classList.remove('on'); }
       else { ans[qid].push(val); btn.classList.add('on'); }
@@ -358,7 +333,7 @@ function render() {
   });
   document.querySelectorAll('.rb-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      const {qid,val} = btn.dataset;
+      const {qid,val}=btn.dataset;
       ans[qid]=val;
       document.querySelectorAll(`.rb-btn[data-qid="${qid}"]`).forEach(b=>b.classList.remove('on'));
       btn.classList.add('on');
@@ -447,21 +422,14 @@ JSONのみ出力してください。`;
 }
 
 const TC={1:{bg:'#FFF3EE',c:'#993C1D',label:'タイプ①'},2:{bg:'#E6F1FB',c:'#185FA5',label:'タイプ②'},3:{bg:'#EEEDFE',c:'#3C3489',label:'タイプ③'},4:{bg:'#EAF3DE',c:'#3B6D11',label:'タイプ④'},5:{bg:'#E1F5EE',c:'#0F6E56',label:'タイプ⑤'}};
-
-const RESULT_IMAGES = [
-  'https://images.unsplash.com/photo-1507652313519-d4e9174996dd?w=800&q=80',
-  'https://images.unsplash.com/photo-1489171078254-c3365d6e359f?w=800&q=80',
-  'https://images.unsplash.com/photo-1571781926291-c477ebfd024b?w=800&q=80',
-  'https://images.unsplash.com/photo-1484101403633-562f891dc89a?w=800&q=80',
-  'https://images.unsplash.com/photo-1501854140801-50d01698950b?w=800&q=80',
-];
+const RESULT_IMAGES=['https://images.unsplash.com/photo-1507652313519-d4e9174996dd?w=800&q=80','https://images.unsplash.com/photo-1489171078254-c3365d6e359f?w=800&q=80','https://images.unsplash.com/photo-1571781926291-c477ebfd024b?w=800&q=80','https://images.unsplash.com/photo-1484101403633-562f891dc89a?w=800&q=80','https://images.unsplash.com/photo-1501854140801-50d01698950b?w=800&q=80'];
 
 function showResult(r) {
   document.getElementById('s-loading').classList.add('hidden');
   document.getElementById('s-result').classList.remove('hidden');
   const tc=TC[r.type_number]||TC[1];
   const kw=(r.keywords||[]).map(k=>`<span style="background:${tc.bg};color:${tc.c};font-size:12px;padding:3px 10px;border-radius:20px;margin:2px 4px 2px 0;display:inline-block;">${k}</span>`).join('');
-  const rimg = RESULT_IMAGES[(r.type_number||1)-1];
+  const rimg=RESULT_IMAGES[(r.type_number||1)-1];
   document.getElementById('result-body').innerHTML=`
     <img src="${rimg}" alt="結果イメージ" style="width:100%;height:180px;object-fit:cover;border-radius:12px;margin-bottom:1.5rem;">
     <div style="text-align:center;margin-bottom:1.5rem;">
