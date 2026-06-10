@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ととのう暮らし診断</title>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script>
+  (function(){ emailjs.init({ publicKey: "S5GtO9-r6F5RYSoje" }); })();
+</script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: 'Hiragino Kana Gothic ProN','Hiragino Sans',sans-serif; background:#f7f5f2; color:#2c2c2a; min-height:100vh; }
@@ -375,6 +379,49 @@ function goNext() {
 
 function goBack() { save(); if(cur>0){cur--;render();} }
 
+// 回答サマリーを生成
+function buildAnswersSummary() {
+  const lines = [];
+  SECS.forEach(s => s.qs.forEach(q => {
+    const v = ans[q.id];
+    if (!v || (Array.isArray(v) && !v.length) || v === '') return;
+    lines.push(`【${q.label}】\n${Array.isArray(v) ? v.join('、') : v}`);
+  }));
+  return lines.join('\n\n');
+}
+
+// EmailJS でメール送信
+async function sendEmails(resultData) {
+  const userName = ans['q1'] || 'お客様';
+  const userEmail = ans['q4'] || '';
+  const answersSummary = buildAnswersSummary();
+
+  const templateParams = {
+    name: userName,
+    result_type: `${resultData.type_name}（タイプ${resultData.type_number}）`,
+    result_detail: `【現在の状態】${resultData.state}\n\n【本質的なポイント】${resultData.essence}\n\n【ご提案】${resultData.proposal}\n\n【メッセージ】${resultData.message}`,
+    answers_summary: answersSummary,
+    email: userEmail || 'hero.hasshy@gmail.com',
+  };
+
+  try {
+    // ① ピロリンへ通知（To Email はテンプレートで hero.hasshy@gmail.com に固定済み）
+    await emailjs.send('service_t789gci', 'template_ielvnve', templateParams);
+
+    // ② 利用者へも送信（メールアドレスがある場合のみ）
+    if (userEmail) {
+      await emailjs.send('service_t789gci', 'template_ielvnve', {
+        ...templateParams,
+        email: userEmail,
+        // To Email を利用者のアドレスに上書き
+        to_email: userEmail,
+      });
+    }
+  } catch (e) {
+    console.warn('メール送信エラー:', e);
+  }
+}
+
 async function submit() {
   document.getElementById('s-form').classList.add('hidden');
   document.getElementById('s-loading').classList.remove('hidden');
@@ -415,7 +462,12 @@ JSONのみ出力してください。`;
     });
     const data=await res.json();
     const txt=data.content.map(i=>i.text||'').join('').replace(/```json|```/g,'').trim();
-    showResult(JSON.parse(txt));
+    const result = JSON.parse(txt);
+
+    // メール送信（バックグラウンド）
+    sendEmails(result);
+
+    showResult(result);
   } catch(e) {
     showFallback();
   }
