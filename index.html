@@ -72,7 +72,7 @@ textarea { min-height:80px; }
 <div class="wrap">
 
 <!-- APIキー設定 -->
-<div id="s-api">
+<div id="s-api" class="hidden">
   <div class="hero">
     <div class="hero-sub">SETUP</div>
     <h1>APIキーの設定</h1>
@@ -93,7 +93,7 @@ textarea { min-height:80px; }
 </div>
 
 <!-- イントロ -->
-<div id="s-intro" class="hidden">
+<div id="s-intro">
   <img src="https://images.unsplash.com/photo-1501854140801-50d01698950b?w=800&q=80" alt="自然" style="width:100%;height:220px;object-fit:cover;border-radius:16px;margin-bottom:1.5rem;">
   <div class="hero" style="padding-top:0;">
     <div class="hero-sub">TOTONOU KURASHI SHINDAN</div>
@@ -267,12 +267,12 @@ const SECS = [
     { id:"q30", label:"現地確認や面談の際に、特に見てほしい場所があれば教えてください", type:"textarea" },
     { id:"q1", label:"お名前", type:"text", note:"診断結果をお送りする際に使用します", req:true },
     { id:"q3", label:"お電話番号", type:"text", req:true },
-    { id:"q4", label:"メールアドレス", type:"text" },
+    { id:"q4", label:"メールアドレス", type:"text", req:true },
     { id:"q2", label:"ご住所", type:"text", note:"現地確認をご希望の場合にご記入ください" }
   ]}
 ];
 
-let API_KEY = '';
+let API_KEY = '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';
 const ans = {};
 let cur = 0;
 
